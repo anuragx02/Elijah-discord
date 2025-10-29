@@ -1,14 +1,15 @@
 """
 Discord chatbot that responds to mentions and stores user information.
+Uses AI for intelligent extraction of user information from conversations.
 """
 
 import os
-import re
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 from database import UserDatabase
 from ai_client import AIClient, MockAIClient
+from ai_extractor import AIExtractor, MockAIExtractor
 
 # Load environment variables
 load_dotenv()
@@ -25,9 +26,12 @@ db = UserDatabase()
 # Initialize AI client
 if AI_API_URL and AI_API_URL != "https://api.example.com/chat":
     ai_client = AIClient(AI_API_URL, AI_API_KEY)
+    ai_extractor = AIExtractor(AI_API_URL, AI_API_KEY)
+    print("Using real AI client and extractor.")
 else:
-    print("Using mock AI client. Set AI_API_URL in .env to use a real AI service.")
+    print("Using mock AI client and extractor. Set AI_API_URL in .env to use a real AI service.")
     ai_client = MockAIClient()
+    ai_extractor = MockAIExtractor()
 
 # Bot setup with intents
 intents = discord.Intents.default()
@@ -35,56 +39,6 @@ intents.message_content = True
 intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-
-
-def extract_user_info(message_content: str) -> dict:
-    """
-    Extract user information from message content.
-    
-    Args:
-        message_content: The message text to parse
-        
-    Returns:
-        Dictionary of extracted information
-    """
-    info = {}
-    
-    # Extract name patterns
-    name_patterns = [
-        r"my name is (\w+)",
-        r"i'm (\w+)",
-        r"i am (\w+)",
-        r"call me (\w+)",
-    ]
-    
-    for pattern in name_patterns:
-        match = re.search(pattern, message_content.lower())
-        if match:
-            info["name"] = match.group(1).capitalize()
-            break
-    
-    # Extract age
-    age_pattern = r"i'm (\d+) years old|i am (\d+) years old|my age is (\d+)|i'm (\d+)|i am (\d+)"
-    age_match = re.search(age_pattern, message_content.lower())
-    if age_match:
-        age = next((g for g in age_match.groups() if g), None)
-        if age:
-            info["age"] = age
-    
-    # Extract location
-    location_patterns = [
-        r"i live in ([a-zA-Z\s]+)",
-        r"i'm from ([a-zA-Z\s]+)",
-        r"i am from ([a-zA-Z\s]+)",
-    ]
-    
-    for pattern in location_patterns:
-        match = re.search(pattern, message_content.lower())
-        if match:
-            info["location"] = match.group(1).strip().title()
-            break
-    
-    return info
 
 
 @bot.event
@@ -121,7 +75,7 @@ async def on_message(message):
         try:
             replied_message = await message.channel.fetch_message(message.reference.message_id)
             is_reply_to_bot = replied_message.author == bot.user
-        except:
+        except (discord.NotFound, discord.HTTPException):
             pass
     
     # Only respond if mentioned or replied to
@@ -138,8 +92,8 @@ async def on_message(message):
         await message.channel.send("Yes? How can I help you?")
         return
     
-    # Extract and store user information
-    user_info = extract_user_info(content)
+    # Extract and store user information using AI
+    user_info = ai_extractor.extract_user_info(content)
     if user_info:
         db.store_user_info(
             str(message.author.id),

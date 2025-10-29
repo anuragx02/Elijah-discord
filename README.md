@@ -6,10 +6,11 @@ A smart Discord chatbot that can have conversations with users and remember info
 
 - **Selective Response**: Only responds when mentioned (@bot) or when someone replies to its messages
 - **Channel-Specific**: Can be configured to only respond in a specific channel
-- **User Data Storage**: Automatically extracts and stores user information (name, age, location, etc.) from conversations
+- **AI-Powered Extraction**: Uses AI to intelligently extract and store user information (name, age, location, occupation, hobbies, etc.) from conversations
 - **Information Recall**: Can recall stored information about users when needed
 - **AI Integration**: Uses the requests library to communicate with AI models for intelligent responses
 - **Database Persistence**: Stores user data in SQLite for persistence across restarts
+- **Fallback Logic**: Works with or without a real AI API - includes mock AI for testing
 
 ## Requirements
 
@@ -85,15 +86,27 @@ The bot will only respond when:
 
 ### How Information Storage Works
 
-The bot automatically extracts and stores information from conversations:
+The bot uses **AI-powered extraction** to intelligently identify and store user information from conversations. It can extract:
+
+- **Name**: "My name is John" or "Call me Alice"
+- **Age**: "I'm 25 years old" or "My age is 30"
+- **Location**: "I live in New York" or "I'm from London"
+- **Occupation**: "I work as a software engineer"
+- **Hobbies**: "I love playing guitar" or "I like reading"
+- **And more**: The AI can identify various types of personal information
+
+**Examples:**
 
 **Examples:**
 - "My name is John" → Stores name: John
 - "I'm 25 years old" → Stores age: 25
 - "I live in New York" → Stores location: New York
-- "I'm from London" → Stores location: London
+- "I work as a software engineer" → Stores occupation: Software Engineer
+- "I love playing guitar" → Stores hobby: Playing Guitar
 
 The bot can recall this information in future conversations.
+
+**Note**: When a real AI API is configured, it uses the API for extraction. Otherwise, it falls back to enhanced pattern-matching logic.
 
 ## Project Structure
 
@@ -102,6 +115,9 @@ Elijah-discord/
 ├── bot.py              # Main bot file with Discord event handlers
 ├── database.py         # Database module for user data storage
 ├── ai_client.py        # AI client for API communication
+├── ai_extractor.py     # AI-powered information extraction
+├── demo.py             # Demonstration script
+├── test_bot.py         # Test suite
 ├── requirements.txt    # Python dependencies
 ├── .env.example        # Example environment configuration
 ├── .gitignore         # Git ignore rules
@@ -113,8 +129,12 @@ Elijah-discord/
 - **bot.py**: Main Discord bot logic using discord.py library
   - Handles message events
   - Checks for mentions and replies
-  - Extracts user information using regex
-  - Coordinates between database and AI client
+  - Coordinates between AI extractor, database, and AI client
+
+- **ai_extractor.py**: AI-powered information extraction
+  - Uses AI API to intelligently extract user information
+  - Falls back to pattern matching when AI API is unavailable
+  - Extracts name, age, location, occupation, hobbies, and more
 
 - **database.py**: SQLite database management
   - Stores user information with JSON data field
@@ -125,6 +145,14 @@ Elijah-discord/
   - Uses requests library for HTTP communication
   - Includes mock client for testing without real API
   - Handles API errors gracefully
+
+- **demo.py**: Demonstration script
+  - Shows how the bot works without Discord connection
+  - Tests extraction and storage functionality
+
+- **test_bot.py**: Test suite
+  - Unit tests for database, AI client, and AI extractor
+  - Ensures all components work correctly
 
 ## AI Integration
 

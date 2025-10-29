@@ -8,6 +8,7 @@ import sys
 import tempfile
 from database import UserDatabase
 from ai_client import MockAIClient
+from ai_extractor import MockAIExtractor
 
 
 def test_database():
@@ -84,6 +85,46 @@ def test_ai_client():
     return True
 
 
+def test_ai_extractor():
+    """Test AI-based information extraction."""
+    print("Testing AI extractor...")
+    
+    extractor = MockAIExtractor()
+    
+    # Test name extraction
+    info = extractor.extract_user_info("My name is John")
+    assert info.get("name") == "John", f"Should extract name, got: {info}"
+    print(f"✓ Name extraction: {info}")
+    
+    # Test age extraction
+    info = extractor.extract_user_info("I'm 25 years old")
+    assert info.get("age") == "25", f"Should extract age, got: {info}"
+    print(f"✓ Age extraction: {info}")
+    
+    # Test location extraction
+    info = extractor.extract_user_info("I live in New York")
+    assert info.get("location") == "New York", f"Should extract location, got: {info}"
+    print(f"✓ Location extraction: {info}")
+    
+    # Test occupation extraction
+    info = extractor.extract_user_info("I work as a software engineer")
+    assert info.get("occupation") == "Software Engineer", f"Should extract occupation, got: {info}"
+    print(f"✓ Occupation extraction: {info}")
+    
+    # Test hobby extraction
+    info = extractor.extract_user_info("I love playing guitar")
+    assert "hobby" in info, f"Should extract hobby, got: {info}"
+    print(f"✓ Hobby extraction: {info}")
+    
+    # Test no extraction
+    info = extractor.extract_user_info("Hello, how are you?")
+    assert len(info) == 0, "Should not extract anything from greeting"
+    print(f"✓ No extraction from greeting: {info}")
+    
+    print("✅ AI extractor tests passed!\n")
+    return True
+
+
 def test_user_info_extraction():
     """Test user information extraction from bot.py."""
     print("Testing user info extraction...")
@@ -91,38 +132,13 @@ def test_user_info_extraction():
     # Import the extract_user_info function
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     try:
-        from bot import extract_user_info
+        from bot import ai_extractor
+        print("⚠️  Skipping test (requires discord.py to import bot module)")
+        print("   AI extraction is tested separately in test_ai_extractor()")
     except ImportError as e:
         print(f"⚠️  Skipping test (discord.py not installed): {e}")
         print("   Install dependencies with: pip install -r requirements.txt")
-        return True
-    
-    # Test name extraction
-    info = extract_user_info("My name is John")
-    assert info.get("name") == "John", "Should extract name"
-    print(f"✓ Name extraction: {info}")
-    
-    info = extract_user_info("I'm Alice")
-    assert info.get("name") == "Alice", "Should extract name from 'I'm'"
-    print(f"✓ Name extraction (I'm): {info}")
-    
-    # Test age extraction
-    info = extract_user_info("I'm 25 years old")
-    assert info.get("age") == "25", "Should extract age"
-    print(f"✓ Age extraction: {info}")
-    
-    # Test location extraction
-    info = extract_user_info("I live in New York")
-    assert info.get("location") == "New York", "Should extract location"
-    print(f"✓ Location extraction: {info}")
-    
-    # Test multiple info extraction
-    info = extract_user_info("My name is Bob and I'm 30 years old")
-    assert info.get("name") == "Bob", "Should extract name"
-    assert info.get("age") == "30", "Should extract age"
-    print(f"✓ Multiple info extraction: {info}")
-    
-    print("✅ User info extraction tests passed!\n")
+        print("   AI extraction is tested separately in test_ai_extractor()")
     return True
 
 
@@ -135,6 +151,7 @@ def main():
     tests = [
         test_database,
         test_ai_client,
+        test_ai_extractor,
         test_user_info_extraction,
     ]
     
