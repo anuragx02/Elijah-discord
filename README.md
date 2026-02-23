@@ -230,5 +230,3 @@ This project is open source and available for personal and educational use.
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues or pull requests.
-
-just a small change down here
