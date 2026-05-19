@@ -1,232 +1,157 @@
 # Elijah Discord Bot
 
-A smart Discord chatbot that can have conversations with users and remember information about them.
+Elijah is a Discord AI chatbot powered by Groq's OpenAI-compatible chat completions API. It keeps channel-scoped conversation memory, can persist that memory in Supabase Postgres, responds in DMs, mentions, replies, or an opt-in "respond to all" mode, and is configured entirely through environment variables.
 
-## Features
+This repo is structured as a deployable Python bot project: modular package code, no hardcoded secrets, and environment-based configuration for hosting platforms like Wispbyte.
 
-- **Selective Response**: Only responds when mentioned (@bot) or when someone replies to its messages
-- **Channel-Specific**: Can be configured to only respond in a specific channel
-- **AI-Powered Extraction**: Uses AI to intelligently extract and store user information (name, age, location, occupation, hobbies, etc.) from conversations
-- **Information Recall**: Can recall stored information about users when needed
-- **AI Integration**: Uses the requests library to communicate with AI models for intelligent responses
-- **Database Persistence**: Stores user data in SQLite for persistence across restarts
-- **Fallback Logic**: Works with or without a real AI API - includes mock AI for testing
+## Highlights
 
-## Requirements
+- Async Discord bot built on `discord.py` and `aiohttp`
+- Groq chat completions integration with configurable model and endpoint
+- Per-channel and per-DM memory window with optional Supabase Postgres persistence
+- Mention, reply, DM, command-prefix, or configured channel response modes
+- Safe environment-based configuration through `.env`
+- Local commands for memory reset and status checks
+- Simple `python main.py` startup command for hosting
 
-- Python 3.8 or higher
-- Discord bot token (from Discord Developer Portal)
-- Optional: AI API endpoint for advanced responses
+## Demo Commands
 
-## Installation
+After inviting the bot to a server:
 
-1. Clone the repository:
+```text
+@Elijah help me brainstorm a project idea
+!elijah status
+!elijah reset
+```
+
+By default, Elijah responds to DMs, direct mentions, replies to the bot, and `!elijah` commands. Set `RESPOND_TO_ALL=true` only in a private or dedicated bot channel.
+
+## Project Structure
+
+```text
+Elijah-discord/
+|-- main.py           # Wispbyte-friendly startup file
+|-- config.py         # Environment configuration and validation
+|-- discord_bot.py    # Discord event handling and bot commands
+|-- groq_client.py    # Async Groq chat completions client
+|-- memory.py         # Channel-scoped conversation memory
+|-- postgres_store.py # Supabase/Postgres-backed memory store
+|-- Procfile          # Worker process command for compatible hosts
+|-- runtime.txt       # Python runtime hint for compatible hosts
+|-- .env.example
+`-- requirements.txt
+```
+
+## Setup
+
+1. Create and activate a virtual environment:
+
 ```bash
-git clone https://github.com/anuragx02/Elijah-discord.git
-cd Elijah-discord
+python -m venv .venv
+.venv\Scripts\activate
 ```
 
 2. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Create a `.env` file based on `.env.example`:
+3. Create your environment file:
+
 ```bash
-cp .env.example .env
+copy .env.example .env
 ```
 
-4. Configure your `.env` file with your credentials:
+4. Fill in the required values:
+
 ```env
 DISCORD_TOKEN=your_discord_bot_token_here
-CHANNEL_ID=your_channel_id_here  # Optional: leave empty to respond in all channels
-AI_API_URL=https://api.example.com/chat  # Optional: use your AI API endpoint
-AI_API_KEY=your_api_key_here  # Optional: if your AI API requires authentication
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
-## Getting a Discord Bot Token
+5. Optional: add Supabase-backed memory:
 
-1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
-2. Click "New Application" and give it a name
-3. Go to the "Bot" section in the left sidebar
-4. Click "Add Bot"
-5. Under the TOKEN section, click "Copy" to copy your bot token
-6. Enable the following Privileged Gateway Intents:
-   - Message Content Intent
-   - Server Members Intent
-7. Go to OAuth2 > URL Generator
-8. Select scopes: `bot`
-9. Select bot permissions: `Send Messages`, `Read Messages/View Channels`, `Read Message History`
-10. Use the generated URL to invite the bot to your server
+```env
+SUPABASE_DB_URL=postgresql://postgres.your-ref:password@aws-0-region.pooler.supabase.com:6543/postgres?sslmode=require
+```
 
-## Getting Channel ID
+6. Run the bot:
 
-1. Enable Developer Mode in Discord (Settings > Advanced > Developer Mode)
-2. Right-click on the channel you want the bot to respond in
-3. Click "Copy ID"
-4. Paste this ID in your `.env` file as `CHANNEL_ID`
-
-## Usage
-
-Run the bot:
 ```bash
-python bot.py
+python main.py
 ```
 
-### Interacting with the Bot
+## Configuration
 
-The bot will only respond when:
-1. You mention it: `@Elijah hello!`
-2. You reply to one of its messages
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `DISCORD_TOKEN` | Yes | - | Discord bot token from the Developer Portal |
+| `GROQ_API_KEY` | Yes | - | Groq API key |
+| `GROQ_MODEL` | No | `llama-3.1-8b-instant` | Chat model name |
+| `GROQ_API_URL` | No | Groq chat completions URL | OpenAI-compatible chat endpoint |
+| `CHANNEL_ID` | No | empty | Restrict bot responses to one Discord channel |
+| `RESPOND_TO_ALL` | No | `false` | Respond to every message in the allowed channel |
+| `MAX_HISTORY_MESSAGES` | No | `12` | Max messages retained per chat, including system prompt |
+| `REQUEST_TIMEOUT_SECONDS` | No | `30` | HTTP timeout for AI requests |
+| `COMMAND_PREFIX` | No | `!elijah` | Prefix for local bot commands |
+| `SYSTEM_PROMPT` | No | concise Elijah persona | Bot behavior instruction |
+| `SUPABASE_DB_URL` | No | empty | Supabase/Postgres connection string for persistent memory |
 
-### Commands
+`DATABASE_URL` also works as an alias for `SUPABASE_DB_URL`.
 
-- `!userinfo` - Display stored information about yourself
-- `!userinfo @user` - Display stored information about another user
+## Supabase Memory
 
-### How Information Storage Works
+Without `SUPABASE_DB_URL`, Elijah uses in-memory chat history. That is fine for local testing, but the memory disappears when the bot restarts.
 
-The bot uses **AI-powered extraction** to intelligently identify and store user information from conversations. It can extract:
+With `SUPABASE_DB_URL`, Elijah stores each channel or DM's bounded message history in Supabase Postgres. On startup, the app creates this table automatically:
 
-- **Name**: "My name is John" or "Call me Alice"
-- **Age**: "I'm 25 years old" or "My age is 30"
-- **Location**: "I live in New York" or "I'm from London"
-- **Occupation**: "I work as a software engineer"
-- **Hobbies**: "I love playing guitar" or "I like reading"
-- **And more**: The AI can identify various types of personal information
-
-**Examples:**
-
-**Examples:**
-- "My name is John" → Stores name: John
-- "I'm 25 years old" → Stores age: 25
-- "I live in New York" → Stores location: New York
-- "I work as a software engineer" → Stores occupation: Software Engineer
-- "I love playing guitar" → Stores hobby: Playing Guitar
-
-The bot can recall this information in future conversations.
-
-**Note**: When a real AI API is configured, it uses the API for extraction. Otherwise, it falls back to enhanced pattern-matching logic.
-
-## Project Structure
-
-```
-Elijah-discord/
-├── bot.py              # Main bot file with Discord event handlers
-├── database.py         # Database module for user data storage
-├── ai_client.py        # AI client for API communication
-├── ai_extractor.py     # AI-powered information extraction
-├── demo.py             # Demonstration script
-├── test_bot.py         # Test suite
-├── requirements.txt    # Python dependencies
-├── .env.example        # Example environment configuration
-├── .gitignore         # Git ignore rules
-└── README.md          # This file
+```sql
+CREATE TABLE IF NOT EXISTS conversation_memories (
+    scope_id TEXT PRIMARY KEY,
+    messages JSONB NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 ```
 
-## Architecture
+To get the connection string in Supabase:
 
-- **bot.py**: Main Discord bot logic using discord.py library
-  - Handles message events
-  - Checks for mentions and replies
-  - Coordinates between AI extractor, database, and AI client
+1. Open your Supabase project.
+2. Go to Project Settings > Database.
+3. Copy the pooled connection string.
+4. Add your database password.
+5. Keep `sslmode=require` in the URL.
 
-- **ai_extractor.py**: AI-powered information extraction
-  - Uses AI API to intelligently extract user information
-  - Falls back to pattern matching when AI API is unavailable
-  - Extracts name, age, location, occupation, hobbies, and more
+The bot stores only the recent bounded context configured by `MAX_HISTORY_MESSAGES`, not an unlimited transcript.
 
-- **database.py**: SQLite database management
-  - Stores user information with JSON data field
-  - Provides methods to store and retrieve user data
-  - Maintains user history with timestamps
+## Discord Setup
 
-- **ai_client.py**: AI API communication
-  - Uses requests library for HTTP communication
-  - Includes mock client for testing without real API
-  - Handles API errors gracefully
+1. Open the Discord Developer Portal.
+2. Create an application and add a bot user.
+3. Enable the Message Content Intent.
+4. Use OAuth2 URL Generator with the `bot` scope.
+5. Give it `View Channels`, `Send Messages`, and `Read Message History`.
+6. Invite the bot to your server.
 
-- **demo.py**: Demonstration script
-  - Shows how the bot works without Discord connection
-  - Tests extraction and storage functionality
+## Wispbyte Hosting
 
-- **test_bot.py**: Test suite
-  - Unit tests for database, AI client, and AI extractor
-  - Ensures all components work correctly
+Use this startup command:
 
-## AI Integration
-
-The bot supports integration with any AI API that accepts JSON POST requests. If no AI API is configured, it uses a built-in mock client for basic responses.
-
-### AI API Expected Format
-
-Request:
-```json
-{
-  "message": "user message",
-  "context": {
-    "username": "User#1234",
-    "data": {
-      "name": "John",
-      "age": "25"
-    }
-  }
-}
+```bash
+python main.py
 ```
 
-Response (any of these formats):
-```json
-{
-  "response": "AI response text"
-}
-```
-or
-```json
-{
-  "message": "AI response text"
-}
-```
-or
-```json
-{
-  "text": "AI response text"
-}
+If Wispbyte reads a `Procfile`, it can use:
+
+```text
+worker: python main.py
 ```
 
-## Development
+Configure secrets in Wispbyte's environment variable panel instead of committing a real `.env` file.
 
-### Testing Without AI API
+## Security Notes
 
-The bot includes a mock AI client that works without any external API. Simply leave `AI_API_URL` unset or set to the example URL, and the bot will use mock responses for testing.
-
-### Database Schema
-
-Users table:
-- `user_id` (TEXT, PRIMARY KEY): Discord user ID
-- `username` (TEXT): Discord username
-- `data` (TEXT): JSON field containing user information
-- `last_updated` (TIMESTAMP): Last update timestamp
-
-## Troubleshooting
-
-**Bot doesn't respond:**
-- Ensure the bot has "Message Content Intent" enabled in Discord Developer Portal
-- Check that you're mentioning the bot or replying to its messages
-- If using CHANNEL_ID, verify the bot is in that specific channel
-
-**Database errors:**
-- Ensure the bot has write permissions in its directory
-- Delete `users.db` to reset the database if corrupted
-
-**AI API errors:**
-- Check your API URL and key are correct
-- Verify your API endpoint is accessible
-- Check API request/response format matches expectations
-
-## License
-
-This project is open source and available for personal and educational use.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues or pull requests.
+- Never commit `.env` or real tokens.
+- If a token was ever committed or shared, rotate it in the Discord Developer Portal or Groq dashboard.
+- Treat your Supabase database password like a secret too.
+- Keep `RESPOND_TO_ALL=false` unless the bot is in a private or dedicated bot channel.
