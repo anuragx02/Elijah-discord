@@ -214,4 +214,11 @@ def run() -> None:
         raise SystemExit(str(exc)) from exc
 
     client = build_client(config)
-    client.run(config.discord_token, log_handler=None)
+    try:
+        client.run(config.discord_token, log_handler=None)
+    except discord.LoginFailure as exc:
+        raise SystemExit(
+            "Discord rejected DISCORD_TOKEN. Regenerate/copy the Bot token from the "
+            "Discord Developer Portal > your app > Bot > Reset Token, then paste only "
+            "the raw token into .env without quotes or a leading 'Bot ' prefix."
+        ) from exc

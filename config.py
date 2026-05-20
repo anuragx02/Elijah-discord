@@ -15,6 +15,38 @@ DEFAULT_SYSTEM_PROMPT = (
     "Keep replies short, useful, and natural."
 )
 
+PLACEHOLDER_MARKERS = (
+    "your_",
+    "your-",
+    "replace",
+    "example",
+    "placeholder",
+    "token_here",
+    "api_key_here",
+    "key_here",
+)
+
+
+def _looks_like_placeholder(value: str) -> bool:
+    normalized = value.strip().strip("'\"").lower()
+    return any(marker in normalized for marker in PLACEHOLDER_MARKERS)
+
+
+def _validate_secret(name: str, value: str) -> None:
+    if _looks_like_placeholder(value):
+        raise RuntimeError(
+            f"{name} still looks like a placeholder. "
+            "Replace it in .env with the real value before starting the bot."
+        )
+
+
+def _validate_discord_token(value: str) -> None:
+    _validate_secret("DISCORD_TOKEN", value)
+    if value.lower().startswith("bot "):
+        raise RuntimeError("DISCORD_TOKEN should be the raw token, without a leading 'Bot ' prefix.")
+    if any(character.isspace() for character in value):
+        raise RuntimeError("DISCORD_TOKEN should not contain spaces or line breaks.")
+
 
 def _read_bool(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
@@ -95,6 +127,9 @@ class BotConfig:
                 f"Missing required environment variable(s): {joined_names}. "
                 "Create a .env file from .env.example and add your credentials."
             )
+
+        _validate_discord_token(discord_token)
+        _validate_secret("GROQ_API_KEY", groq_api_key)
 
         return cls(
             discord_token=discord_token,
